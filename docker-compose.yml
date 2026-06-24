@@ -1,0 +1,52 @@
+services:
+    php:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        working_dir: /var/www/html
+        volumes:
+            - ./src:/var/www/html
+            - ./docker/scripts:/scripts
+        environment:
+            # Xdebug apagado por defecto; se activa con XDEBUG_MODE=debug
+            XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003"
+
+            # Variables de entorno utilizadas en los ejemplos del curso 
+            MYSQL_HOST: mysql
+            MYSQL_USER: alumno
+            MYSQL_PASSWORD: alumno
+            MYSQL_DB: laravel
+
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        depends_on:
+            - mysql
+
+    nginx:
+        image: nginx:alpine
+        ports:
+            - "8080:80"
+        depends_on:
+            - php
+        volumes:
+            - ./src:/var/www/html:ro
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+    mysql:
+        image: mysql:8.0
+        environment:
+            MYSQL_ROOT_PASSWORD: administrador
+            MYSQL_DATABASE: laravel
+            MYSQL_USER: alumno
+            MYSQL_PASSWORD: alumno
+        ports:
+            # Para evitar colisiones con MySQL local del host puedes cambiar el puerto 3306 por otro, por ejemplo 3307:3306
+            - "3306:3306"
+        volumes:
+            - dbdata:/var/lib/mysql
+            - ./docker/scripts:/scripts
+            - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+        tmpfs:
+            - /tmp
+volumes:
+    dbdata:
